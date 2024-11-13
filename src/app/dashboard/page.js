@@ -5,46 +5,46 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import {
-  Avatar, 
-  AvatarFallback, 
-  AvatarImage 
+    Avatar,
+    AvatarFallback,
+    AvatarImage
 } from "@/components/ui/avatar"
 import { LogOut, CalendarIcon, ChevronUp, ChevronDown } from 'lucide-react'
 import { auth } from '@/config/firebaseConfig'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import NewRequestDrawer from '@/components/new-request-dialog'
-import { 
-  Drawer,
-  DrawerContent, 
-  DrawerHeader, 
-  DrawerTitle, 
-  DrawerTrigger, 
-  DrawerFooter 
+import {
+    Drawer,
+    DrawerContent,
+    DrawerHeader,
+    DrawerTitle,
+    DrawerTrigger,
+    DrawerFooter
 } from "@/components/ui/drawer"
 import { Calendar } from "@/components/ui/calendar"
-import { 
-  Popover, 
-  PopoverContent, 
-  PopoverTrigger 
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger
 } from "@/components/ui/popover"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
 } from "@/components/ui/select"
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { format } from "date-fns"
 
@@ -179,7 +179,7 @@ export default function DashboardPage() {
                     <h1 className="text-2xl font-bold">Travel Buddy</h1>
                 </div>
                 <div className="flex items-center gap-4">
-                    
+
                     <Avatar className="h-10 w-10">
                         <AvatarImage src={user?.photoURL} />
                         <AvatarFallback>
@@ -197,12 +197,12 @@ export default function DashboardPage() {
             </header>
 
             <section className="mb-12">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
-                    <div className="flex items-center gap-2 mb-6">
+                <div className="flex flex-wrap items-center justify-between mb-6 gap-4">
+                    <div className="flex items-center gap-2">
                         <div className="w-1 h-6 bg-black"></div>
                         <h2 className="text-2xl font-bold">My Requests</h2>
                     </div>
-                    <NewRequestDrawer/>
+                    <NewRequestDrawer />
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
@@ -213,15 +213,15 @@ export default function DashboardPage() {
             </section>
 
             <section>
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
-                    <div className="flex items-center gap-2 mb-6">
+                <div className="flex flex-wrap items-center justify-between mb-6 gap-4">
+                    <div className="flex items-center gap-2">
                         <div className="w-1 h-6 bg-black"></div>
-                        <h2 className="text-2xl font-bold">All Open Requests</h2>
+                        <h2 className="text-2xl font-bold">All Requests</h2>
                     </div>
                     <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
                         <DrawerTrigger asChild>
-                            <Button className="w-full sm:w-auto bg-[#1A0726] hover:bg-[#2A1736] text-white px-6">
-                                Apply Filters
+                            <Button className="bg-[#1A0726] hover:bg-[#2A1736] text-white px-6">
+                                Filters
                             </Button>
                         </DrawerTrigger>
                         <DrawerContent>
