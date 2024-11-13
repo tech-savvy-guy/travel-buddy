@@ -226,7 +226,7 @@ export default function DashboardPage() {
                         <DrawerContent>
                             <div className="mx-auto w-full max-w-sm">
                                 <DrawerHeader>
-                                    <DrawerTitle className="text-xl font-bold text-center">Filter Requests</DrawerTitle>
+                                    <DrawerTitle className="text-xl font-bold text-center">Apply Filters</DrawerTitle>
                                 </DrawerHeader>
                                 <div className="p-4 pb-0">
                                     <div className="grid gap-4">
@@ -318,7 +318,7 @@ export default function DashboardPage() {
                                 </div>
                                 <DrawerFooter>
                                     <Button onClick={handleApplyFilters} className="bg-[#1A0726] hover:bg-[#2A1736] text-white">
-                                        Apply Filters
+                                        Filters
                                     </Button>
                                     <Button variant="outline" onClick={() => setIsDrawerOpen(false)}>
                                         Cancel

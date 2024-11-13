@@ -58,7 +58,7 @@ export default function NewRequestDrawer() {
   return (
     <Drawer open={open} onOpenChange={setOpen}>
       <DrawerTrigger asChild>
-        <Button className="bg-[#1A0726] hover:bg-black text-white hover:scale-105 transition-all duration-200 rounded-md px-4 py-2 font-[400]">
+        <Button className="bg-[#1A0726] w-full sm:w-auto hover:bg-black text-white hover:scale-105 transition-all duration-200 rounded-md px-4 py-2 font-[400]">
           New Request
         </Button>
       </DrawerTrigger>
