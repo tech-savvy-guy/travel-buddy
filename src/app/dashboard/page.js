@@ -179,7 +179,7 @@ export default function DashboardPage() {
                     <h1 className="text-2xl font-bold">Travel Buddy</h1>
                 </div>
                 <div className="flex items-center gap-4">
-                    <NewRequestDrawer />
+                    
                     <Avatar className="h-10 w-10">
                         <AvatarImage src={user?.photoURL} />
                         <AvatarFallback>
@@ -197,11 +197,14 @@ export default function DashboardPage() {
             </header>
 
             <section className="mb-12">
+            <div className="flex items-center justify-between mb-6">
+
                 <div className="flex items-center gap-2 mb-6">
                     <div className="w-1 h-6 bg-black"></div>
                     <h2 className="text-2xl font-bold">My Requests</h2>
                 </div>
-
+                <NewRequestDrawer />
+            </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {travelRequests.map((request) => (
                         <TravelRequestCard key={request.id} request={request} />
@@ -213,7 +216,7 @@ export default function DashboardPage() {
                 <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-2 mb-6">
                         <div className="w-1 h-6 bg-black"></div>
-                        <h2 className="text-2xl font-bold">All Open Requests</h2>
+                        <h2 className="text-2xl font-bold">Open Requests</h2>
                     </div>
                     <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
                         <DrawerTrigger asChild>
