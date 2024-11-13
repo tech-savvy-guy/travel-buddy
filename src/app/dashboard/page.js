@@ -118,24 +118,24 @@ export default function DashboardPage() {
     }
 
     const TravelRequestCard = ({ request }) => (
-        <Card className="p-6 bg-white rounded-xl shadow-sm">
+        <Card className="p-4 sm:p-6 bg-white rounded-xl shadow-sm">
             <div className="flex flex-col gap-4">
                 <div className="flex justify-between items-start">
-                    <div className={`w-13 h-13 rounded-lg ${request.bgColor} flex items-center justify-center overflow-hidden`}>
+                    <div className={`w-10 h-10 sm:w-13 sm:h-13 rounded-lg ${request.bgColor} flex items-center justify-center overflow-hidden`}>
                         <Image
                             src={request.imageSrc}
                             alt={request.location}
                             width={75}
                             height={75}
-                            className="object-cover"
+                            className="object-cover w-6 h-6 sm:w-auto sm:h-auto"
                         />
                     </div>
                     <span className="text-red-500 text-base font-[500]">{request.openSlots} open slots</span>
                 </div>
 
                 <div>
-                    <h3 className="text-[20px] font-bold mb-4">{request.location}</h3>
-                    <div className="space-y-1 text-[15px] text-muted-foreground">
+                    <h3 className="text-lg sm:text-[20px] font-bold mb-2 sm:mb-4">{request.location}</h3>
+                    <div className="space-y-1 text-sm sm:text-[15px] text-muted-foreground">
                         <p>Date: {request.date}</p>
                         <p>Time: {request.time}</p>
                         <p>Car Type: {request.carType}</p>
@@ -172,14 +172,13 @@ export default function DashboardPage() {
     )
 
     return (
-        <div className="min-h-screen bg-white p-8 max-w-[1200px] mx-auto">
-            <header className="flex justify-between items-center mb-12">
+        <div className="min-h-screen bg-white p-4 sm:p-8 max-w-[1200px] mx-auto">
+            <header className="flex flex-col sm:flex-row justify-between items-center mb-6 sm:mb-12 gap-4">
                 <div className="flex items-center gap-2">
                     <div className="w-1 h-6 bg-black"></div>
                     <h1 className="text-2xl font-bold">Travel Buddy</h1>
                 </div>
                 <div className="flex items-center gap-4">
-                    
                     <Avatar className="h-10 w-10">
                         <AvatarImage src={user?.photoURL} />
                         <AvatarFallback>
@@ -197,15 +196,15 @@ export default function DashboardPage() {
             </header>
 
             <section className="mb-12">
-            <div className="flex items-center justify-between mb-6">
-
-                <div className="flex items-center gap-2 mb-6">
-                    <div className="w-1 h-6 bg-black"></div>
-                    <h2 className="text-2xl font-bold">My Requests</h2>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
+                    <div className="flex items-center gap-2 mb-6">
+                        <div className="w-1 h-6 bg-black"></div>
+                        <h2 className="text-2xl font-bold">My Requests</h2>
+                    </div>
+                    <NewRequestDrawer/>
                 </div>
-                <NewRequestDrawer />
-            </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                     {travelRequests.map((request) => (
                         <TravelRequestCard key={request.id} request={request} />
                     ))}
@@ -213,14 +212,14 @@ export default function DashboardPage() {
             </section>
 
             <section>
-                <div className="flex items-center justify-between mb-6">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
                     <div className="flex items-center gap-2 mb-6">
                         <div className="w-1 h-6 bg-black"></div>
-                        <h2 className="text-2xl font-bold">Open Requests</h2>
+                        <h2 className="text-2xl font-bold">All Open Requests</h2>
                     </div>
                     <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
                         <DrawerTrigger asChild>
-                            <Button className="bg-[#1A0726] hover:bg-[#2A1736] text-white px-6">
+                            <Button className="w-full sm:w-auto bg-[#1A0726] hover:bg-[#2A1736] text-white px-6">
                                 Apply Filters
                             </Button>
                         </DrawerTrigger>
@@ -292,7 +291,7 @@ export default function DashboardPage() {
                                                     variant="ghost"
                                                     size="sm"
                                                     className="h-8 w-8 p-0"
-                                                    onClick={() => setMinutes(m => m === 55 ? 0 : m + 5)}
+                                                    onClick={() => setMinutes(m => m === 59 ? 0 : m + 1)}
                                                 >
                                                     <ChevronUp className="h-4 w-4" />
                                                 </Button>
@@ -301,7 +300,7 @@ export default function DashboardPage() {
                                                     variant="ghost"
                                                     size="sm"
                                                     className="h-8 w-8 p-0"
-                                                    onClick={() => setMinutes(m => m === 0 ? 55 : m - 5)}
+                                                    onClick={() => setMinutes(m => m === 0 ? 59 : m - 1)}
                                                 >
                                                     <ChevronDown className="h-4 w-4" />
                                                 </Button>
