@@ -29,7 +29,7 @@ export default function LandingPage() {
 
   useEffect(() => {
     const checkAuthentication = async () => {
-      await new Promise((resolve) => setTimeout(resolve, 50))
+      await new Promise((resolve) => setTimeout(resolve, 100))
       setIsAuthChecking(false)
     }
     checkAuthentication()
