@@ -1,5 +1,6 @@
-import { Rubik } from 'next/font/google'
 import './globals.css'
+import { Rubik } from 'next/font/google'
+import { AuthProvider } from '../context/AuthContext'
 
 const rubik = Rubik({ subsets: ['latin'], display: 'swap' })
 
@@ -11,7 +12,9 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body className={rubik.className}>{children}</body>
+      <body className={rubik.className}>
+        <AuthProvider>{children}</AuthProvider>
+      </body>
     </html>
   )
 }

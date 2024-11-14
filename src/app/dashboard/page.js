@@ -1,6 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { useAuth } from '@/context/AuthContext'
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -10,10 +12,9 @@ import {
     AvatarImage
 } from "@/components/ui/avatar"
 import { LogOut, CalendarIcon, ChevronUp, ChevronDown } from 'lucide-react'
-import { auth } from '@/config/firebaseConfig'
-import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import NewRequestDrawer from '@/components/new-request-dialog'
+import LoadingScreen from '@/components/loading-screen'
 import {
     Drawer,
     DrawerContent,
@@ -89,7 +90,8 @@ const locations = [
 
 export default function DashboardPage() {
     const router = useRouter()
-    const user = auth.currentUser
+    const { user, logout } = useAuth()
+    const [isAuthChecking, setIsAuthChecking] = useState(true)
     const [date, setDate] = useState()
     const [hours, setHours] = useState(12)
     const [minutes, setMinutes] = useState(0)
@@ -97,23 +99,35 @@ export default function DashboardPage() {
     const [destination, setDestination] = useState('')
     const [isDrawerOpen, setIsDrawerOpen] = useState(false)
 
+    useEffect(() => {
+        const checkAuthentication = async () => {
+            await new Promise((resolve) => setTimeout(resolve, 50))
+            setIsAuthChecking(false)
+        }
+        checkAuthentication()
+    }, [])
+
+    useEffect(() => {
+        if (!user && !isAuthChecking) {
+            router.replace('/')
+        }
+    }, [user, isAuthChecking, router])
+
     const handleSignOut = async () => {
         try {
-            await auth.signOut()
-            router.push('/')
+            await logout()
+            router.replace('/')
         } catch (error) {
             console.error('Error signing out:', error)
         }
     }
 
     const handleApplyFilters = () => {
-        // Implement filter logic here
         console.log('Applying filters:', { destination, date, time: `${hours}:${minutes} ${period}` })
         setIsDrawerOpen(false)
     }
 
     const handleDeleteRequest = (id) => {
-        // Implement delete logic here
         console.log('Deleting request:', id)
     }
 
@@ -171,6 +185,10 @@ export default function DashboardPage() {
         </Card>
     )
 
+    if (isAuthChecking || !user) {
+        return <LoadingScreen />
+    }
+
     return (
         <div className="min-h-screen bg-white p-4 sm:p-8 max-w-[1200px] mx-auto">
             <header className="flex justify-between items-center mb-12">
@@ -179,7 +197,6 @@ export default function DashboardPage() {
                     <h1 className="text-2xl font-bold">Travel Buddy</h1>
                 </div>
                 <div className="flex items-center gap-4">
-
                     <Avatar className="h-10 w-10">
                         <AvatarImage src={user?.photoURL} />
                         <AvatarFallback>
@@ -319,7 +336,7 @@ export default function DashboardPage() {
                                 </div>
                                 <DrawerFooter>
                                     <Button onClick={handleApplyFilters} className="bg-[#1A0726] hover:bg-[#2A1736] text-white">
-                                        Filters
+                                        Apply
                                     </Button>
                                     <Button variant="outline" onClick={() => setIsDrawerOpen(false)}>
                                         Cancel
