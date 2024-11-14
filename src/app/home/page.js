@@ -18,7 +18,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { GoogleAuthProvider, signInWithPopup } from "firebase/auth"
-import { auth } from '@/config/firebaseConfig'
+import { doc, setDoc, getDoc } from "firebase/firestore"
+import { auth, db } from '@/config/firebaseConfig'
 
 export default function LandingPage() {
   const router = useRouter()
@@ -62,6 +63,7 @@ export default function LandingPage() {
       const user = result.user
 
       if ((user.email && user.email.endsWith('@vitstudent.ac.in')) || (user.email === 'dattasoham805@gmail.com')) {
+        await storeUserData(user)
         router.replace('/dashboard')
       } else {
         await auth.signOut()
@@ -89,6 +91,27 @@ export default function LandingPage() {
       }
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const storeUserData = async (user) => {
+    const userRef = doc(db, "users", user.uid)
+    const userSnap = await getDoc(userRef)
+
+    if (!userSnap.exists()) {
+      // If the user doesn't exist in Firestore, add them
+      await setDoc(userRef, {
+        email: user.email,
+        phone: null,
+        gender: null,
+        displayName: user.displayName,
+        photoURL: user.photoURL,
+        createdAt: new Date(),
+        lastLogin: new Date(),
+      })
+    } else {
+      // If the user already exists, you might want to update their last login time
+      await setDoc(userRef, { lastLogin: new Date() }, { merge: true })
     }
   }
 

@@ -26,22 +26,21 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
 import { format } from "date-fns"
-import { 
-  CalendarIcon, 
-  ChevronUp, 
-  ChevronDown, 
-  Plus, 
-  Minus 
-} from 'lucide-react'
+import { CalendarIcon, ChevronUp, ChevronDown, Plus, Minus, Phone } from 'lucide-react'
+import { addDoc, collection } from 'firebase/firestore'
+import { db } from '@/config/firebaseConfig'
+import { useAuth } from '@/context/AuthContext'
 
-export default function NewRequestDrawer() {
+export default function Component({ onRequestAdded = () => {} }) {
   const [date, setDate] = React.useState()
   const [hours, setHours] = React.useState(12)
   const [minutes, setMinutes] = React.useState(0)
   const [period, setPeriod] = React.useState('PM')
   const [participants, setParticipants] = React.useState(2)
-  const [carType, setCarType] = React.useState("sedan")
+  const [carType, setCarType] = React.useState("Sedan")
+  const [location, setLocation] = React.useState("")
   const [open, setOpen] = React.useState(false)
+  const { user } = useAuth()
 
   const handleIncrement = () => {
     if (participants < 6) {
@@ -52,6 +51,42 @@ export default function NewRequestDrawer() {
   const handleDecrement = () => {
     if (participants > 2) {
       setParticipants(prev => prev - 1)
+    }
+  }
+
+  const handleSubmit = async () => {
+    if (!user) {
+      console.error("User not authenticated")
+      return
+    }
+
+    if (!location || !date) {
+      console.error("Location and date are required")
+      return
+    }
+
+    const time = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')} ${period}`
+    const requestDate = new Date(date)
+    requestDate.setHours(period === 'PM' ? hours + 12 : hours)
+    requestDate.setMinutes(minutes)
+
+    try {
+      const docRef = await addDoc(collection(db, "requests"), {
+        userId: user.uid,
+        location,
+        participants,
+        carType,
+        date: requestDate,
+        time,
+        pin: Math.floor(1000 + Math.random() * 9000),
+        createdAt: new Date(),
+        openSlots: participants - 1  // Assuming the requester takes one slot
+      })
+      console.log("Document written with ID: ", docRef.id)
+      onRequestAdded()
+      setOpen(false)
+    } catch (e) {
+      console.error("Error adding document: ", e)
     }
   }
 
@@ -69,14 +104,14 @@ export default function NewRequestDrawer() {
           </DrawerHeader>
           <div className="p-4 pb-0">
             <div className="grid gap-4">
-              <Select>
+              <Select onValueChange={setLocation} value={location}>
                 <SelectTrigger>
                   <SelectValue placeholder="Choose a Location" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="chennai-airport">Chennai Airport</SelectItem>
-                  <SelectItem value="mgr-station">MGR Railway Station</SelectItem>
-                  <SelectItem value="tambaram">Tambaram Station</SelectItem>
+                  <SelectItem value="mgr-railway-station">MGR Railway Station</SelectItem>
+                  <SelectItem value="tambaram-station">Tambaram Station</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -112,8 +147,8 @@ export default function NewRequestDrawer() {
                 <label className="text-sm text-muted-foreground">Car Type</label>
                 <Tabs value={carType} onValueChange={setCarType} className="w-full">
                   <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="sedan">Sedan</TabsTrigger>
-                    <TabsTrigger value="suv">SUV</TabsTrigger>
+                    <TabsTrigger value="Sedan">Sedan</TabsTrigger>
+                    <TabsTrigger value="SUV">SUV</TabsTrigger>
                   </TabsList>
                 </Tabs>
               </div>
@@ -195,7 +230,7 @@ export default function NewRequestDrawer() {
             </div>
           </div>
           <DrawerFooter>
-            <Button className="bg-[#1A0726] hover:bg-[#2A1736] text-white">Submit</Button>
+            <Button className="bg-[#1A0726] hover:bg-[#2A1736] text-white" onClick={handleSubmit}>Submit</Button>
             <Button variant="outline" onClick={() => setOpen(false)}>
               Cancel
             </Button>

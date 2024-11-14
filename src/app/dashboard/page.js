@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
 import {
     Avatar,
     AvatarFallback,
@@ -47,57 +46,51 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { format } from "date-fns"
-
-const travelRequests = [
-    {
-        id: 1,
-        location: "Chennai Airport",
-        imageSrc: "/images/airport-icon.png",
-        openSlots: 5,
-        date: "10th June, 2024",
-        time: "10 AM",
-        carType: "Sedan",
-        bgColor: "bg-[#B3F5FF]"
-    },
-    {
-        id: 2,
-        location: "MGR Railway Station",
-        imageSrc: "/images/train-icon.png",
-        openSlots: 12,
-        date: "11th June, 2024",
-        time: "2 PM",
-        carType: "SUV",
-        bgColor: "bg-[#FFE5CC]"
-    },
-    {
-        id: 3,
-        location: "Tambaram Station",
-        imageSrc: "/images/train-icon-local.png",
-        openSlots: 3,
-        date: "12th June, 2024",
-        time: "5 PM",
-        carType: "SUV",
-        bgColor: "bg-[#E6FFCC]"
-    }
-]
+import { collection, query, where, getDocs, deleteDoc, doc, updateDoc, getDoc, setDoc } from "firebase/firestore"
+import { db } from '@/config/firebaseConfig'
 
 const locations = [
-    { value: "chennai-airport", label: "Chennai Airport" },
-    { value: "mgr-railway-station", label: "MGR Railway Station" },
-    { value: "tambaram-station", label: "Tambaram Station" },
+    { value: "chennai-airport", label: "Chennai Airport", icon: "/images/airport-icon.png" },
+    { value: "mgr-railway-station", label: "MGR Railway Station", icon: "/images/train-icon.png" },
+    { value: "tambaram-station", label: "Tambaram Station", icon: "/images/train-icon-local.png" },
 ]
 
-export default function DashboardPage() {
+const locationsDict = locations.reduce((acc, location) => {
+    acc[location.value] = [location.label, location.icon]
+    return acc
+}, {})
+
+export default function Component() {
     const router = useRouter()
     const { user, logout } = useAuth()
     const [isAuthChecking, setIsAuthChecking] = useState(true)
-    const [date, setDate] = useState()
+    const [date, setDate] = useState(undefined)
     const [hours, setHours] = useState(12)
     const [minutes, setMinutes] = useState(0)
     const [period, setPeriod] = useState('PM')
     const [destination, setDestination] = useState('')
     const [isDrawerOpen, setIsDrawerOpen] = useState(false)
+    const [myRequests, setMyRequests] = useState([])
+    const [allRequests, setAllRequests] = useState([])
+    const [filteredRequests, setFilteredRequests] = useState([])
+    const [isProfileComplete, setIsProfileComplete] = useState(false)
+    const [isOtpDrawerOpen, setIsOtpDrawerOpen] = useState(false)
+    const [currentRequestId, setCurrentRequestId] = useState(null)
+    const [otp, setOtp] = useState(['', '', '', ''])
+    const [userInfo, setUserInfo] = useState(null)
+    const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false)
 
     useEffect(() => {
         const checkAuthentication = async () => {
@@ -110,8 +103,59 @@ export default function DashboardPage() {
     useEffect(() => {
         if (!user && !isAuthChecking) {
             router.replace('/')
+        } else if (user) {
+            fetchUserInfo()
+            fetchRequests()
         }
     }, [user, isAuthChecking, router])
+
+    const fetchUserInfo = async () => {
+        if (!user) return
+
+        try {
+            const userDocRef = doc(db, "users", user.uid)
+            const userDocSnap = await getDoc(userDocRef)
+            if (userDocSnap.exists()) {
+                const userData = userDocSnap.data()
+                setUserInfo(userData)
+                setIsProfileComplete(!!userData.displayName && !!userData.phone && !!userData.gender)
+            } else {
+                console.log("No such user!")
+                setIsProfileComplete(false)
+            }
+        } catch (error) {
+            console.error("Error fetching user info:", error)
+        }
+    }
+
+    const fetchRequests = async () => {
+        if (!user) return
+
+        const requestsRef = collection(db, "requests")
+        const myRequestsQuery = query(requestsRef, where("userId", "==", user.uid))
+        const allRequestsQuery = query(requestsRef, where("userId", "!=", user.uid), where("openSlots", ">", 0))
+
+        const [myRequestsSnapshot, allRequestsSnapshot] = await Promise.all([
+            getDocs(myRequestsQuery),
+            getDocs(allRequestsQuery)
+        ])
+
+        const allRequestsData = await Promise.all(allRequestsSnapshot.docs.map(async (docSnapshot) => {
+            const requestData = docSnapshot.data()
+            const userDocRef = doc(db, "users", requestData.userId)
+            const userDocSnap = await getDoc(userDocRef)
+            const userData = userDocSnap.data()
+            return {
+                id: docSnapshot.id,
+                ...requestData,
+                userPhone: userData?.phone
+            }
+        }))
+
+        setMyRequests(myRequestsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })))
+        setAllRequests(allRequestsData)
+        setFilteredRequests(allRequestsData)
+    }
 
     const handleSignOut = async () => {
         try {
@@ -123,64 +167,178 @@ export default function DashboardPage() {
     }
 
     const handleApplyFilters = () => {
-        console.log('Applying filters:', { destination, date, time: `${hours}:${minutes} ${period}` })
+        const filtered = allRequests.filter(request => {
+            const requestDate = request.date.toDate()
+            return (
+                (!destination || request.location === destination) &&
+                (!date || format(requestDate, "yyyy-MM-dd") === format(date, "yyyy-MM-dd"))
+            )
+        })
+
+        const sortedFiltered = filtered.sort((a, b) => {
+            const aDate = a.date.toDate()
+            const bDate = b.date.toDate()
+            const selectedTime = new Date(date || new Date())
+            selectedTime.setHours(hours + (period === 'PM' && hours !== 12 ? 12 : 0), minutes, 0, 0)
+
+            const aDiff = Math.abs(aDate - selectedTime)
+            const bDiff = Math.abs(bDate - selectedTime)
+
+            return aDiff - bDiff
+        })
+
+        setFilteredRequests(sortedFiltered)
         setIsDrawerOpen(false)
     }
 
-    const handleDeleteRequest = (id) => {
-        console.log('Deleting request:', id)
+    const handleResetFilters = () => {
+        setDestination('')
+        setDate(undefined)
+        setHours(12)
+        setMinutes(0)
+        setPeriod('PM')
+        setFilteredRequests(allRequests)
     }
 
-    const TravelRequestCard = ({ request }) => (
+    const handleDeleteRequest = async (id) => {
+        try {
+            await deleteDoc(doc(db, "requests", id))
+            setMyRequests(myRequests.filter(request => request.id !== id))
+        } catch (error) {
+            console.error('Error deleting request:', error)
+        }
+    }
+
+    const handleContact = (userPhone) => {
+        window.open(`tel:${userPhone}`, '_blank')
+    }
+
+    const handleJoin = (requestId) => {
+        if (!isProfileComplete) {
+            setIsProfileDialogOpen(true)
+            return
+        }
+        setCurrentRequestId(requestId)
+        setIsOtpDrawerOpen(true)
+    }
+
+    const handleOtpChange = (index, value) => {
+        const newOtp = [...otp]
+        newOtp[index] = value
+        setOtp(newOtp)
+
+        // Move to next input
+        if (value !== '' && index < 3) {
+            document.getElementById(`otp-${index + 1}`).focus()
+        }
+    }
+
+    const handleOtpSubmit = async () => {
+        const enteredOtp = otp.join('')
+        const request = allRequests.find(r => r.id === currentRequestId)
+
+        if (request && request.pin === parseInt(enteredOtp, 10)) {
+            try {
+                await updateDoc(doc(db, "requests", currentRequestId), {
+                    openSlots: request.openSlots - 1
+                })
+                setIsOtpDrawerOpen(false)
+                setOtp(['', '', '', ''])
+                fetchRequests() // Refresh the requests
+            } catch (error) {
+                console.error('Error updating request:', error)
+            }
+        } else {
+            alert('Invalid OTP')
+        }
+    }
+
+    const handleProfileUpdate = async (event) => {
+        event.preventDefault()
+        const formData = new FormData(event.target)
+        const updatedUserInfo = {
+            displayName: formData.get('displayName'),
+            phoneNumber: formData.get('phoneNumber'),
+            gender: formData.get('gender'),
+        }
+
+        try {
+            await setDoc(doc(db, "users", user.uid), updatedUserInfo, { merge: true })
+            setUserInfo({ ...userInfo, ...updatedUserInfo })
+            setIsProfileComplete(true)
+            setIsProfileDialogOpen(false)
+            fetchUserInfo() // Refresh user info
+        } catch (error) {
+            console.error("Error updating profile:", error)
+        }
+    }
+
+    const TravelRequestCard = ({ request, isUserRequest }) => (
         <Card className="p-6 bg-white rounded-xl shadow-sm">
             <div className="flex flex-col gap-4">
                 <div className="flex justify-between items-start">
-                    <div className={`w-13 h-13 rounded-lg ${request.bgColor} flex items-center justify-center overflow-hidden`}>
+                    <div className={`w-13 h-13 rounded-lg bg-[#B3F5FF] flex items-center justify-center overflow-hidden`}>
                         <Image
-                            src={request.imageSrc}
+                            src={locationsDict[request.location][1]}
                             alt={request.location}
                             width={75}
                             height={75}
                             className="object-cover"
                         />
                     </div>
-                    <span className="text-red-500 text-base font-[500]">{request.openSlots} open slots</span>
+                    <div className="flex flex-col">
+                        <span className="text-500 text-base font-[500]">{request.openSlots} open slots</span>
+                        {isUserRequest && (
+                            <span className="text-slate-500 text-base font-[500]">PIN: {request.pin}</span>
+                        )}
+                    </div>
                 </div>
 
                 <div>
-                    <h3 className="text-[20px] font-bold mb-4">{request.location}</h3>
+                    <h3 className="text-[20px] font-bold mb-4">{locationsDict[request.location][0]}</h3>
                     <div className="space-y-1 text-[15px] text-muted-foreground">
-                        <p>Date: {request.date}</p>
-                        <p>Time: {request.time}</p>
+                        <p>Date: {format(request.date.toDate(), "PPP")}</p>
+                        <p>Time: {format(request.date.toDate(), "h:mm a")}</p>
                         <p>Car Type: {request.carType}</p>
                     </div>
                 </div>
 
-                <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                        <Button
-                            variant="outline"
-                            className="w-full mt-2 border-gray-200 hover:bg-red-500 hover:text-white text-[15px] font-[400]"
-                        >
-                            Delete Request
+                {isUserRequest ? (
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button
+                                variant="outline"
+                                className="w-full mt-2 border-gray-200 hover:bg-red-500 hover:text-white text-[15px] font-[400]"
+                            >
+                                Delete Request
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    This action cannot be undone. This will permanently delete your
+                                    travel request.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDeleteRequest(request.id)}>
+                                    Delete
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                ) : (
+                    <div className="flex gap-2 mt-2">
+                        <Button variant='outline' onClick={() => handleContact(request.userPhone)} className="flex-1">
+                            Contact
                         </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                        <AlertDialogHeader>
-                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                                This action cannot be undone. This will permanently delete your
-                                travel request.
-                            </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleDeleteRequest(request.id)}>
-                                Delete
-                            </AlertDialogAction>
-                        </AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
+                        <Button onClick={() => handleJoin(request.id)} className="flex-1">
+                            Join
+                        </Button>
+                    </div>
+                )}
             </div>
         </Card>
     )
@@ -197,12 +355,79 @@ export default function DashboardPage() {
                     <h1 className="text-2xl font-bold">Travel Buddy</h1>
                 </div>
                 <div className="flex items-center gap-4">
-                    <Avatar className="h-10 w-10">
-                        <AvatarImage src={user?.photoURL} />
-                        <AvatarFallback>
-                            {user?.email?.charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                    </Avatar>
+                    <Dialog open={isProfileDialogOpen} onOpenChange={setIsProfileDialogOpen}>
+                        <DialogTrigger asChild>
+                            <Avatar className="h-10 w-10 cursor-pointer">
+                                <AvatarImage src={userInfo?.photoURL} />
+                                <AvatarFallback>
+                                    {userInfo?.displayName?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase()}
+                                </AvatarFallback>
+                            </Avatar>
+                        </DialogTrigger>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>{isProfileComplete ? "Edit Profile" : "Complete Profile"}</DialogTitle>
+                                <DialogDescription>
+                                    {isProfileComplete ? "Update your profile information here." : "Please complete your profile to continue."}
+                                </DialogDescription>
+                            </DialogHeader>
+                            <form onSubmit={handleProfileUpdate}>
+                                <div className="grid gap-4 py-4">
+                                    <div className="grid grid-cols-4 items-center gap-4">
+                                        <Label htmlFor="displayName" className="text-right">
+                                            Name
+                                        </Label>
+                                        <Input
+                                            id="displayName"
+                                            name="displayName"
+                                            defaultValue={userInfo?.displayName}
+                                            className="col-span-3"
+                                        />
+                                    </div>
+                                    <div className="grid grid-cols-4 items-center gap-4">
+                                        <Label htmlFor="phoneNumber" className="text-right">
+                                            Phone
+                                        </Label>
+                                        <Input
+                                            id="phoneNumber"
+                                            name="phoneNumber"
+                                            defaultValue={userInfo?.phoneNumber}
+                                            className="col-span-3"
+                                        />
+                                    </div>
+                                    <div className="grid grid-cols-4 items-center gap-4">
+                                        <Label htmlFor="email" className="text-right">
+                                            Email
+                                        </Label>
+                                        <Input
+                                            id="email"
+                                            name="email"
+                                            defaultValue={user?.email}
+                                            className="col-span-3"
+                                            disabled
+                                        />
+                                    </div>
+                                    <div className="grid grid-cols-4 items-center gap-4">
+                                        <Label htmlFor="gender" className="text-right">
+                                            Gender
+                                        </Label>
+                                        <Select name="gender" defaultValue={userInfo?.gender}>
+                                            <SelectTrigger className="col-span-3">
+                                                <SelectValue placeholder="Select gender" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="male">Male</SelectItem>
+                                                <SelectItem value="female">Female</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
+                                <DialogFooter>
+                                    <Button type="submit">Save changes</Button>
+                                </DialogFooter>
+                            </form>
+                        </DialogContent>
+                    </Dialog>
                     <Button
                         variant="ghost"
                         size="icon"
@@ -219,12 +444,16 @@ export default function DashboardPage() {
                         <div className="w-1 h-6 bg-black"></div>
                         <h2 className="text-2xl font-bold">My Requests</h2>
                     </div>
-                    <NewRequestDrawer />
+                    {isProfileComplete ? (
+                        <NewRequestDrawer onRequestAdded={fetchRequests} />
+                    ) : (
+                        <Button onClick={() => setIsProfileDialogOpen(true)}>New Request</Button>
+                    )}
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                    {travelRequests.map((request) => (
-                        <TravelRequestCard key={request.id} request={request} />
+                    {myRequests.map((request) => (
+                        <TravelRequestCard key={request.id} request={request} isUserRequest={true} />
                     ))}
                 </div>
             </section>
@@ -237,7 +466,7 @@ export default function DashboardPage() {
                     </div>
                     <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
                         <DrawerTrigger asChild>
-                            <Button className="bg-[#1A0726] hover:bg-[#2A1736] text-white px-6">
+                            <Button className="bg-[#1A0726] hover:bg-[#2A1736] text-white px-6 font-[400]">
                                 Filters
                             </Button>
                         </DrawerTrigger>
@@ -338,15 +567,54 @@ export default function DashboardPage() {
                                     <Button onClick={handleApplyFilters} className="bg-[#1A0726] hover:bg-[#2A1736] text-white">
                                         Apply
                                     </Button>
-                                    <Button variant="outline" onClick={() => setIsDrawerOpen(false)}>
-                                        Cancel
+                                    <Button variant="outline" onClick={handleResetFilters}>
+                                        Reset
                                     </Button>
                                 </DrawerFooter>
                             </div>
                         </DrawerContent>
                     </Drawer>
                 </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                    {filteredRequests.map((request) => (
+                        <TravelRequestCard key={request.id} request={request} isUserRequest={false} />
+                    ))}
+                </div>
             </section>
+
+            <Drawer open={isOtpDrawerOpen} onOpenChange={setIsOtpDrawerOpen}>
+                <DrawerContent>
+                    <div className="mx-auto w-full max-w-sm">
+                        <DrawerHeader>
+                            <DrawerTitle className="text-xl font-bold text-center">Enter OTP</DrawerTitle>
+                        </DrawerHeader>
+                        <div className="p-4 pb-0">
+                            <div className="flex justify-center space-x-2">
+                                {[0, 1, 2, 3].map((index) => (
+                                    <Input
+                                        key={index}
+                                        id={`otp-${index}`}
+                                        type="text"
+                                        maxLength={1}
+                                        className="w-12 h-12 text-center text-2xl"
+                                        value={otp[index]}
+                                        onChange={(e) => handleOtpChange(index, e.target.value)}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                        <DrawerFooter>
+                            <Button onClick={handleOtpSubmit} className="bg-[#1A0726] hover:bg-[#2A1736] text-white">
+                                Submit
+                            </Button>
+                            <Button variant="outline" onClick={() => setIsOtpDrawerOpen(false)}>
+                                Cancel
+                            </Button>
+                        </DrawerFooter>
+                    </div>
+                </DrawerContent>
+            </Drawer>
         </div>
     )
 }
